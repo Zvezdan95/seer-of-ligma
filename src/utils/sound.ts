@@ -37,9 +37,6 @@ class SoundManager {
         volume: 1.0,
         loop: false
     }
-    private audioBallHitsPaddle = fromSoundConfigToAudio(this.ballHitsPaddle);
-    private audioEnemyHit = fromSoundConfigToAudio(this.enemyHit);
-
 
     constructor() {
         this.playIntroScreen();
@@ -54,7 +51,7 @@ class SoundManager {
     }
 
     public playBallHitsPaddle(): void {
-        this.audioBallHitsPaddle.play();
+        playSoundConfigOnce(this.ballHitsPaddle);
     }
 
     public playBallPressed(): void {
@@ -62,7 +59,7 @@ class SoundManager {
     }
 
     public playEnemyHit(): void {
-        this.audioEnemyHit.play();
+        playSoundConfigOnce(this.enemyHit)
     }
 
     public playGameOver(): void {
@@ -111,13 +108,9 @@ type SoundConfig = {
     loop: boolean;
 }
 
-function fromSoundConfigToAudio(soundCfg: SoundConfig):HTMLAudioElement{
+function playSoundConfigOnce(soundConfig: SoundConfig) {
     const audio = new Audio();
-    audio.volume = soundCfg.volume
-    audio.loop = soundCfg.loop
-    audio.src = soundCfg.url
-    audio.load();
-    return audio;
+    setSoundConfigToAudio(audio, soundConfig);
 }
 
 function setSoundConfigToAudio(audio: HTMLAudioElement, soundCfg: SoundConfig): void {
