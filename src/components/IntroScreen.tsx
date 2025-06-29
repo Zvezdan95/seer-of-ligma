@@ -70,7 +70,6 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
     const handleMouseUp = () => {
         setIsHolding(false);
         setHoldProgress(0);
-        soundManager.playIntroScreen();
     };
 
     const handleTouchStart = () => setIsHolding(true);
@@ -168,7 +167,10 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
                 <motion.div
                     className="relative cursor-pointer select-none"
                     onMouseDown={handleMouseDown}
-                    onMouseUp={handleMouseUp}
+                    onMouseUp={() => {
+                        soundManager.playIntroScreen();
+                        handleMouseUp()
+                    }}
                     onMouseLeave={handleMouseUp}
                     onTouchStart={handleTouchStart}
                     onTouchEnd={handleTouchEnd}
