@@ -24,12 +24,11 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
                 setHoldProgress(prev => {
                     const newProgress = prev + (100 / HOLD_DURATION);
 
-
-
                     if (newProgress >= 1) {
                         setShowTransition(true);
                         return 1;
                     }
+
                     return newProgress;
                 });
             }, 100);
@@ -120,7 +119,7 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
                             exit={{ opacity: 0, y: -50 }}
                             transition={{ duration: 0.5 }}
                         >
-                            <h1 className="text-6xl md:text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-purple-300 to-blue-400 mb-4 font-serif">
+                            <h1 className="text-6xl md:text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-purple-300 to-blue-400 mb-4 pb-4 font-serif">
                                 The Seer of Ligma
                             </h1>
                             <p className="text-purple-300 text-lg md:text-xl opacity-75">
@@ -141,7 +140,7 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
                             {/* Phase 1: Remove "The Seer of " */}
                             {transitionPhase >= 1 && (
                                 <motion.div
-                                    className="text-6xl md:text-8xl font-bold font-serif"
+                                    className="text-5xl md:text-8xl font-bold font-serif"
                                     initial={{ opacity: 1 }}
                                     animate={transitionPhase >= 2 ? {
                                         scale: [1, 2.5],
@@ -252,7 +251,7 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                         >
-                            <div className="w-48 h-2 bg-purple-800 rounded-full overflow-hidden">
+                            <div className="w-48 h-5 bg-purple-800 rounded-full overflow-hidden">
                                 <motion.div
                                     className="h-full bg-gradient-to-r from-blue-400 to-purple-400"
                                     style={{ width: `${holdProgress * 100}%` }}
@@ -287,7 +286,7 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
                 {/* Instructions */}
                 {!showTransition && (
                     <motion.p
-                        className="text-purple-300 text-center mt-8 text-sm md:text-base opacity-60"
+                        className="text-purple-300 text-center absolute -bottom-12 text-sm  opacity-60"
                         animate={{ opacity: [0.4, 0.8, 0.4] }}
                         transition={{ duration: 2, repeat: Infinity }}
                     >

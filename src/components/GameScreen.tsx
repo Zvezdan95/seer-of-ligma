@@ -302,7 +302,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver }) => {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-purple-300 text-sm">Balls:</span>
+            <span className="text-purple-300 text-md pb-px">Balls:</span>
             {[...Array(gameState.lives)].map((_, i) => (
               <div key={i} className="w-3 h-3 sm:w-4 sm:h-4 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full shadow-lg"
                 style={{ boxShadow: '0 0 10px rgba(59, 130, 246, 0.6)' }} />
@@ -465,13 +465,6 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver }) => {
             </motion.div>
           )}
 
-          {/* Status Info */}
-          <div className="absolute top-1 right-1 text-xs text-green-400 bg-black bg-opacity-50 p-1 rounded hidden sm:block">
-            <div>✅ Enhanced Physics</div>
-            <div>✅ Difficulty: {gameState.currentPhase.ballSpeedMultiplier.toFixed(1)}x</div>
-            <div>✅ Responsive Design</div>
-            <div>Balls: {gameState.balls.length}</div>
-          </div>
         </div>
       </div>
 

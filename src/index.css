@@ -1,3 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* For Webkit-based browsers (Chrome, Safari, newer versions of Edge) */
+*::-webkit-scrollbar {
+    display: none;
+}
+
+/* For Firefox and other browsers that support scrollbar-width */
+* {
+    scrollbar-width: none; /* "auto" or "thin" */
+}
+
+/* For Internet Explorer and older versions of Edge */
+* {
+    -ms-overflow-style: none;
+}

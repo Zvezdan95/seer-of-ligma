@@ -1,5 +1,5 @@
 // FILE: src/utils/collisions.ts
-// FINAL FIX: Proper "moving away" detection for paddle collisions
+// FINAL FIX: Proper "moving away" detection for paddle collisions + Anti-farming wall collision fix
 
 import { Ball, Enemy, Paddle } from '../types/game';
 import { getDifficultySettings, BASE_BALL_SPEED } from './difficulty';
@@ -22,12 +22,13 @@ export interface BallSeparationResult {
 }
 
 /**
- * Checks if a ball collides with the game walls.
+ * FIXED: Checks if a ball collides with the game walls and prevents easy farming mode.
+ * When ball hits wall at ~90 degrees (±5 degrees), trajectory is changed by 45 degrees.
  */
 export function checkBallWallCollision(
-  ball: Ball,
-  gameWidth: number,
-  gameHeight: number
+    ball: Ball,
+    gameWidth: number,
+    gameHeight: number
 ): CollisionResult | null {
   const nextX = ball.x + ball.vx;
   const nextY = ball.y + ball.vy;
@@ -35,13 +36,53 @@ export function checkBallWallCollision(
   let newVy = ball.vy;
   let hasCollision = false;
 
+  // Check horizontal walls (left/right)
   if (nextX - ball.radius <= 0 || nextX + ball.radius >= gameWidth) {
     newVx = -ball.vx;
     hasCollision = true;
+
+    // ANTI-FARMING FIX: Check if ball is hitting wall at ~90 degrees (±5 degrees)
+    const angle = Math.atan2(Math.abs(ball.vy), Math.abs(ball.vx));
+    const angleInDegrees = (angle * 180) / Math.PI;
+
+    // If angle is close to 90 degrees (very vertical trajectory)
+    if (angleInDegrees >= 85 && angleInDegrees <= 95) {
+      // Add 45-degree deflection to prevent easy bouncing
+      const speed = Math.sqrt(newVx * newVx + newVy * newVy);
+      const deflectionAngle = Math.PI / 4; // 45 degrees
+
+      // Apply deflection based on which wall was hit
+      if (nextX - ball.radius <= 0) {
+        // Left wall - deflect towards bottom-right
+        newVx = Math.cos(deflectionAngle) * speed;
+        newVy = ball.vy > 0 ? Math.sin(deflectionAngle) * speed : -Math.sin(deflectionAngle) * speed;
+      } else {
+        // Right wall - deflect towards bottom-left
+        newVx = -Math.cos(deflectionAngle) * speed;
+        newVy = ball.vy > 0 ? Math.sin(deflectionAngle) * speed : -Math.sin(deflectionAngle) * speed;
+      }
+    }
   }
+
+  // Check vertical walls (top only - bottom is handled by game over)
   if (nextY - ball.radius <= 0) {
     newVy = -ball.vy;
     hasCollision = true;
+
+    // ANTI-FARMING FIX: Check if ball is hitting top wall at ~90 degrees (±5 degrees)
+    const angle = Math.atan2(Math.abs(ball.vx), Math.abs(ball.vy));
+    const angleInDegrees = (angle * 180) / Math.PI;
+
+    // If angle is close to 90 degrees (very horizontal trajectory)
+    if (angleInDegrees >= 85 && angleInDegrees <= 95) {
+      // Add 45-degree deflection to prevent easy bouncing
+      const speed = Math.sqrt(newVx * newVx + newVy * newVy);
+      const deflectionAngle = Math.PI / 4; // 45 degrees
+
+      // Top wall - deflect downward at an angle
+      newVy = Math.sin(deflectionAngle) * speed;
+      newVx = ball.vx > 0 ? Math.cos(deflectionAngle) * speed : -Math.cos(deflectionAngle) * speed;
+    }
   }
 
   return hasCollision ? { vx: newVx, vy: newVy } : null;
@@ -51,13 +92,13 @@ export function checkBallWallCollision(
  * FIXED: Ball-paddle collision with proper "moving away" detection.
  */
 export function checkBallPaddleCollision(
-  ball: Ball,
-  paddle: Paddle,
-  gameHeight: number,
-  gameStartTime?: number
+    ball: Ball,
+    paddle: Paddle,
+    gameHeight: number,
+    gameStartTime?: number
 ): CollisionResult | null {
   const paddleTop = gameHeight - 80;
-  
+
   // FIXED: Only check for collisions if the ball is moving downwards
   if (ball.vy <= 0) {
     return null;
@@ -66,7 +107,7 @@ export function checkBallPaddleCollision(
   // FIXED: If ball is already significantly below paddle, it's "moving away"
   const ballTop = ball.y - ball.radius;
   const ballBottom = ball.y + ball.radius;
-  
+
   // If the ball's TOP is already below the paddle's TOP, it's moving away
   if (ballTop > paddleTop) {
     return null;
@@ -77,12 +118,12 @@ export function checkBallPaddleCollision(
   const ballRight = ball.x + ball.radius;
   const paddleLeft = paddle.x;
   const paddleRight = paddle.x + paddle.width;
-  
+
   // If ball is already overlapping paddle vertically and horizontally
-  if (ballBottom >= paddleTop && 
-      ballRight >= paddleLeft && 
+  if (ballBottom >= paddleTop &&
+      ballRight >= paddleLeft &&
       ballLeft <= paddleRight) {
-    
+
     // Calculate collision response
     const hitLocationOnPaddle = ball.x - paddle.x;
     const normalizedHitPos = Math.max(0, Math.min(1, hitLocationOnPaddle / paddle.width));
@@ -91,11 +132,11 @@ export function checkBallPaddleCollision(
     // Get minimum speed based on current difficulty
     const difficulty = getDifficultySettings(gameStartTime || Date.now());
     const minSpeed = BASE_BALL_SPEED * difficulty.phase.ballSpeedMultiplier;
-    
+
     // Calculate new velocity maintaining minimum speed
     const newVy = -Math.max(minSpeed * 0.7, Math.abs(ball.vy) * 0.9);
     const newVx = ball.vx + angleEffect;
-    
+
     // Normalize to maintain target speed
     const currentSpeed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
     const targetSpeed = Math.max(minSpeed, currentSpeed * 0.9);
@@ -117,7 +158,7 @@ export function checkBallPaddleCollision(
     // Calculate time to collision
     const timeToCollision = Math.max(0, Math.min(1, (paddleTop - ballBottomPrev) / ball.vy));
     const collisionX = ball.x + ball.vx * timeToCollision;
-    
+
     const ballLeftAtCollision = collisionX - ball.radius;
     const ballRightAtCollision = collisionX + ball.radius;
 
@@ -130,11 +171,11 @@ export function checkBallPaddleCollision(
       // Get minimum speed based on current difficulty
       const difficulty = getDifficultySettings(gameStartTime || Date.now());
       const minSpeed = BASE_BALL_SPEED * difficulty.phase.ballSpeedMultiplier;
-      
+
       // Calculate new velocity maintaining minimum speed
       const newVy = -Math.max(minSpeed * 0.7, Math.abs(ball.vy) * 0.9);
       const newVx = ball.vx + angleEffect;
-      
+
       // Normalize to maintain target speed
       const currentSpeed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
       const targetSpeed = Math.max(minSpeed, currentSpeed * 0.9);
@@ -150,13 +191,13 @@ export function checkBallPaddleCollision(
 
   // Method 3: Emergency catch for extreme speeds (failsafe)
   if (ball.y >= paddleTop - ball.radius - 5 && // Very close to paddle
-      ball.x >= paddleLeft - ball.radius && 
+      ball.x >= paddleLeft - ball.radius &&
       ball.x <= paddleRight + ball.radius) {
-    
+
     // Force collision for extreme cases
     const difficulty = getDifficultySettings(gameStartTime || Date.now());
     const minSpeed = BASE_BALL_SPEED * difficulty.phase.ballSpeedMultiplier;
-    
+
     return {
       vx: ball.vx * 0.9,
       vy: -Math.max(minSpeed * 0.8, Math.abs(ball.vy) * 0.9),
@@ -188,9 +229,9 @@ export function checkBallEnemyCollision(ball: Ball, enemy: Enemy): boolean {
  * Checks if an enemy collides with the paddle.
  */
 export function checkEnemyPaddleCollision(
-  enemy: Enemy,
-  paddle: Paddle,
-  gameHeight: number
+    enemy: Enemy,
+    paddle: Paddle,
+    gameHeight: number
 ): boolean {
   const paddleTop = gameHeight - 80;
   const paddleBottom = paddleTop + paddle.height;
@@ -218,7 +259,7 @@ export function checkBallToBallCollision(ball1: Ball, ball2: Ball): BallCollisio
   if (distance > minDistance) {
     return null;
   }
-  
+
   // Handle case where balls are at exactly the same position
   if (distance === 0) {
     return {
@@ -234,20 +275,20 @@ export function checkBallToBallCollision(ball1: Ball, ball2: Ball): BallCollisio
   // Calculate relative velocity
   const relativeVx = ball1.vx - ball2.vx;
   const relativeVy = ball1.vy - ball2.vy;
-  
+
   // Calculate relative velocity in collision normal direction
   const approachingSpeed = relativeVx * nx + relativeVy * ny;
 
   // FIXED: Always process collision if balls are overlapping, regardless of approach speed
   // This ensures we always get velocity changes for overlapping balls
-  
+
   // ULTRA-DRAMATIC: Create spectacular bounces with energy boost
   const energyBoost = 1.4; // 40% energy increase for maximum drama
-  
+
   // FIXED: Use a minimum impulse to ensure velocity changes
   const minImpulse = 2.0; // Minimum impulse for guaranteed velocity change
   const impulse = Math.max(minImpulse, 2 * Math.abs(approachingSpeed) / 2);
-  
+
   // Apply impulse with energy boost and ensure direction change
   const newVx1 = ball1.vx - impulse * nx * energyBoost;
   const newVy1 = ball1.vy - impulse * ny * energyBoost;
@@ -279,7 +320,7 @@ export function separateOverlappingBalls(ball1: Ball, ball2: Ball): BallSeparati
       ball2: { x: ball2.x + overlap * nx, y: ball2.y + overlap * ny },
     };
   }
-  
+
   return {
     ball1: { x: ball1.x, y: ball1.y },
     ball2: { x: ball2.x, y: ball2.y },
