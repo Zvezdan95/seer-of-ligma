@@ -23,6 +23,7 @@ export const getHighScores = async (): Promise<HighScore[]> => {
       .from('high_scores')
       .select('*')
       .order('score', { ascending: false })
+      .order('created_at', { ascending: true }) // FIXED: Earlier submissions get better rank for ties
       .limit(10);
 
     if (error) throw error;
@@ -39,6 +40,7 @@ export const getTopScores = async (limit: number = 5): Promise<HighScore[]> => {
       .from('high_scores')
       .select('*')
       .order('score', { ascending: false })
+      .order('created_at', { ascending: true }) // FIXED: Earlier submissions get better rank for ties
       .limit(limit);
 
     if (error) throw error;
@@ -56,6 +58,7 @@ export const getUserTopScores = async (username: string, limit: number = 5): Pro
       .select('*')
       .eq('username', username)
       .order('score', { ascending: false })
+      .order('created_at', { ascending: true }) // FIXED: Earlier submissions get better rank for ties
       .limit(limit);
 
     if (error) throw error;
@@ -68,17 +71,47 @@ export const getUserTopScores = async (username: string, limit: number = 5): Pro
 
 export const getUserRank = async (username: string, score: number): Promise<number> => {
   try {
-    // Get all scores higher than the current score
-    const { data, error } = await supabase
+    // FIXED: Proper ranking calculation that handles ties correctly
+    // First, get all scores higher than the current score
+    const { data: higherScores, error: higherError } = await supabase
       .from('high_scores')
-      .select('score')
+      .select('score, created_at')
       .gt('score', score)
-      .order('score', { ascending: false });
+      .order('score', { ascending: false })
+      .order('created_at', { ascending: true });
 
-    if (error) throw error;
-    
-    // Rank is the number of higher scores + 1
-    return (data?.length || 0) + 1;
+    if (higherError) throw higherError;
+
+    // Then, get all scores equal to the current score that were submitted earlier
+    // We need to find when this user's score was submitted to compare timestamps
+    const { data: userScore, error: userError } = await supabase
+      .from('high_scores')
+      .select('created_at')
+      .eq('username', username)
+      .eq('score', score)
+      .order('created_at', { ascending: false }) // Get the most recent submission of this score
+      .limit(1);
+
+    if (userError) throw userError;
+
+    let tiedScoresAhead = 0;
+    if (userScore && userScore.length > 0) {
+      const userSubmissionTime = new Date(userScore[0].created_at!);
+      
+      // Get scores equal to current score that were submitted before this user's submission
+      const { data: earlierTiedScores, error: tiedError } = await supabase
+        .from('high_scores')
+        .select('created_at')
+        .eq('score', score)
+        .lt('created_at', userSubmissionTime.toISOString());
+
+      if (tiedError) throw tiedError;
+      tiedScoresAhead = earlierTiedScores?.length || 0;
+    }
+
+    // Rank = number of higher scores + number of tied scores submitted earlier + 1
+    const rank = (higherScores?.length || 0) + tiedScoresAhead + 1;
+    return rank;
   } catch (error) {
     console.error('Error calculating user rank:', error);
     return 0;

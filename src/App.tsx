@@ -1,48 +1,53 @@
-import React, { useState } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import React, {useState} from 'react';
+import {AnimatePresence} from 'framer-motion';
+import AudioMuteToggle from './components/AudioMuteToggle';
 import IntroScreen from './components/IntroScreen';
 import GameScreen from './components/GameScreen';
 import GameOverScreen from './components/GameOverScreen';
+import soundManager from "./utils/sound.ts";
 
 type Screen = 'intro' | 'game' | 'gameover';
 
 function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('intro');
-  const [finalScore, setFinalScore] = useState(0);
+    const [currentScreen, setCurrentScreen] = useState<Screen>('intro');
+    const [finalScore, setFinalScore] = useState(0);
+    const handleIntroComplete = () => {
+        soundManager.playGameplaySoundtrack();
+        setCurrentScreen('game');
+    };
 
-  const handleIntroComplete = () => {
-    setCurrentScreen('game');
-  };
+    const handleGameOver = (score: number) => {
+        soundManager.playGameOver();
+        setFinalScore(score);
+        setCurrentScreen('gameover');
+    };
 
-  const handleGameOver = (score: number) => {
-    setFinalScore(score);
-    setCurrentScreen('gameover');
-  };
+    const handleRestart = () => {
+        soundManager.playIntroScreen()
+        setCurrentScreen('intro');
+        setFinalScore(0);
+    };
 
-  const handleRestart = () => {
-    setCurrentScreen('intro');
-    setFinalScore(0);
-  };
-
-  return (
-    <div className="w-full h-full">
-      <AnimatePresence mode="wait">
-        {currentScreen === 'intro' && (
-          <IntroScreen key="intro" onComplete={handleIntroComplete} />
-        )}
-        {currentScreen === 'game' && (
-          <GameScreen key="game" onGameOver={handleGameOver} />
-        )}
-        {currentScreen === 'gameover' && (
-          <GameOverScreen 
-            key="gameover" 
-            score={finalScore} 
-            onRestart={handleRestart} 
-          />
-        )}
-      </AnimatePresence>
-    </div>
-  );
+    return (
+        <div className="w-full h-full relative">
+            <AudioMuteToggle/>
+            <AnimatePresence mode="wait">
+                {currentScreen === 'intro' && (
+                    <IntroScreen key="intro" onComplete={handleIntroComplete}/>
+                )}
+                {currentScreen === 'game' && (
+                    <GameScreen key="game" onGameOver={handleGameOver}/>
+                )}
+                {currentScreen === 'gameover' && (
+                    <GameOverScreen
+                        key="gameover"
+                        score={finalScore}
+                        onRestart={handleRestart}
+                    />
+                )}
+            </AnimatePresence>
+        </div>
+    );
 }
 
 export default App;

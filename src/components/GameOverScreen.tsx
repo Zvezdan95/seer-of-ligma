@@ -72,6 +72,8 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ score, onRestart }) => 
     setSubmitting(false);
   };
 
+  // FIXED: Check if score qualifies for submission (not just top 5)
+  const qualifiesForSubmission = score > 0;
   const isHighScore = score > 0 && (leaderboardData.globalTop5.length < 5 || score > Math.min(...leaderboardData.globalTop5.map(s => s.score)));
 
   const formatScore = (score: number) => score.toLocaleString();
@@ -107,17 +109,29 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ score, onRestart }) => 
         <div className="grid md:grid-cols-2 gap-8 mb-8">
           {/* Left Column: Score Submission & Global Leaderboard */}
           <div className="space-y-6">
-            {/* High Score Submission */}
-            {isHighScore && !submitted && (
+            {/* FIXED: Score Submission for ANY score > 0 */}
+            {qualifiesForSubmission && !submitted && (
               <motion.div
-                className="bg-gradient-to-r from-yellow-900 to-orange-900 bg-opacity-50 rounded-xl p-6 border border-yellow-500"
+                className={`${isHighScore ? 
+                  'bg-gradient-to-r from-yellow-900 to-orange-900 border-yellow-500' : 
+                  'bg-gradient-to-r from-blue-900 to-indigo-900 border-blue-500'
+                } bg-opacity-50 rounded-xl p-6 border`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
               >
                 <div className="flex items-center justify-center mb-4">
-                  <Crown className="text-yellow-400 mr-2" size={28} />
-                  <p className="text-yellow-400 font-bold text-xl">New High Score!</p>
+                  {isHighScore ? (
+                    <>
+                      <Crown className="text-yellow-400 mr-2" size={28} />
+                      <p className="text-yellow-400 font-bold text-xl">New High Score!</p>
+                    </>
+                  ) : (
+                    <>
+                      <Star className="text-blue-400 mr-2" size={28} />
+                      <p className="text-blue-400 font-bold text-xl">Submit Your Score!</p>
+                    </>
+                  )}
                 </div>
                 <div className="space-y-3">
                   <input
@@ -125,14 +139,17 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ score, onRestart }) => 
                     placeholder="Enter your Reddit username"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-800 border border-yellow-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 text-center"
+                    className={`w-full px-4 py-3 bg-gray-800 border ${isHighScore ? 'border-yellow-500 focus:ring-yellow-400' : 'border-blue-500 focus:ring-blue-400'} rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 text-center`}
                     maxLength={20}
                     disabled={submitting}
                   />
                   <button
                     onClick={handleSubmit}
                     disabled={!username.trim() || submitting}
-                    className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 text-white font-bold py-3 px-4 rounded-lg hover:from-yellow-700 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center"
+                    className={`w-full ${isHighScore ? 
+                      'bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700' : 
+                      'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                    } text-white font-bold py-3 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center`}
                   >
                     {submitting ? (
                       <>
@@ -278,8 +295,8 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ score, onRestart }) => 
               </motion.div>
             )}
 
-            {/* Encouragement for non-high scores */}
-            {!isHighScore && !submitted && (
+            {/* FIXED: Encouragement for non-high scores but still show if they can submit */}
+            {!submitted && qualifiesForSubmission && !isHighScore && leaderboardData.globalTop5.length > 0 && (
               <motion.div
                 className="bg-gradient-to-r from-indigo-900 to-purple-900 bg-opacity-50 rounded-xl p-6 border border-indigo-500"
                 initial={{ opacity: 0, y: 20 }}
@@ -291,6 +308,27 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ score, onRestart }) => 
                   <p className="text-indigo-300 font-medium mb-2">Keep Practicing!</p>
                   <p className="text-indigo-200 text-sm">
                     You need {formatScore(Math.min(...leaderboardData.globalTop5.map(s => s.score)) - score + 1)} more points to reach the top 5!
+                  </p>
+                  <p className="text-indigo-200 text-xs mt-2">
+                    But you can still submit your score to track your progress!
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Show if score is 0 or negative */}
+            {!qualifiesForSubmission && (
+              <motion.div
+                className="bg-gradient-to-r from-gray-800 to-gray-700 bg-opacity-50 rounded-xl p-6 border border-gray-600"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                <div className="text-center">
+                  <TrendingUp className="text-gray-400 mx-auto mb-3" size={32} />
+                  <p className="text-gray-300 font-medium mb-2">Try Again!</p>
+                  <p className="text-gray-400 text-sm">
+                    Score some points to submit to the leaderboard!
                   </p>
                 </div>
               </motion.div>

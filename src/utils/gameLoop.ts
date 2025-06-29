@@ -1,8 +1,8 @@
 // FILE: src/utils/gameLoop.ts
 // FIXED: Pass gameStartTime to paddle collision for speed maintenance
 
-import { GameState, Ball } from '../types/game';
-import { 
+import { GameState, Ball, Enemy } from '../types/game';
+import {
   checkBallWallCollision,
   checkBallPaddleCollision,
   checkBallEnemyCollision,
@@ -11,6 +11,7 @@ import {
   separateOverlappingBalls
 } from './collisions';
 import { getDifficultySettings, getEnemySpeed } from './difficulty';
+import soundManager from "./sound.ts";
 
 const GAME_WIDTH = 800;
 const GAME_HEIGHT = 600;
@@ -21,8 +22,6 @@ const PHYSICS_ITERATIONS = 8;
  */
 export function runGameTick(
   gameState: GameState,
-  playBounce: () => void,
-  playExplosion: () => void,
   setExplodingPunchlines: (fn: (prev: any[]) => any[]) => void,
   ENEMY_PUNCHLINES: Record<string, string>
 ): GameState {
@@ -46,7 +45,7 @@ export function runGameTick(
       for (let k = j + 1; k < newState.balls.length; k++) {
         const ball1 = newState.balls[j];
         const ball2 = newState.balls[k];
-        
+
         const separation = separateOverlappingBalls(ball1, ball2);
         newState.balls[j] = { ...ball1, ...separation.ball1 };
         newState.balls[k] = { ...ball2, ...separation.ball2 };
@@ -56,7 +55,6 @@ export function runGameTick(
           newState.balls[j] = { ...newState.balls[j], ...collision.ball1 };
           newState.balls[k] = { ...newState.balls[k], ...collision.ball2 };
           if (!bouncedThisFrame.has(ball1.id) || !bouncedThisFrame.has(ball2.id)) {
-            playBounce();
             bouncedThisFrame.add(ball1.id);
             bouncedThisFrame.add(ball2.id);
           }
@@ -73,26 +71,25 @@ export function runGameTick(
       if (wallCollision) {
         currentBall = { ...currentBall, ...wallCollision };
         if (!bouncedThisFrame.has(currentBall.id)) {
-            playBounce();
-            bouncedThisFrame.add(currentBall.id);
+          bouncedThisFrame.add(currentBall.id);
         }
       }
-      
+
       // FIXED: Pass gameStartTime to maintain minimum speed
       const paddleCollision = checkBallPaddleCollision(
-        originalBallForPaddleCheck, 
-        newState.paddle, 
+        originalBallForPaddleCheck,
+        newState.paddle,
         GAME_HEIGHT,
         newState.gameStartTime
       );
       if (paddleCollision) {
         currentBall = { ...currentBall, ...paddleCollision };
         if (!bouncedThisFrame.has(currentBall.id)) {
-            playBounce();
-            bouncedThisFrame.add(currentBall.id);
+          bouncedThisFrame.add(currentBall.id);
+          soundManager.playBallHitsPaddle()
         }
       }
-      
+
       return currentBall;
     });
   }
@@ -114,10 +111,10 @@ export function runGameTick(
   });
 
   // Update Enemies and check for collisions
-  const remainingEnemies: Ball[] = [];
+  const remainingEnemies: Enemy[] = [];
   newState.enemies.forEach(enemy => {
     let enemyRemoved = false;
-    
+
     if (checkEnemyPaddleCollision(enemy, newState.paddle, GAME_HEIGHT)) {
       newState.paddle.shrinkTime = Date.now() + 4000;
       enemyRemoved = true;
@@ -128,8 +125,8 @@ export function runGameTick(
         const punchline = ENEMY_PUNCHLINES[enemy.text];
         setExplodingPunchlines(prev => [...prev, { id: `punchline-${Date.now()}-${Math.random()}`, text: punchline, x: enemy.x, y: enemy.y }]);
         newState.score += 100;
-        playExplosion();
         enemyRemoved = true;
+        soundManager.playEnemyHit();
       }
     });
 
@@ -148,6 +145,6 @@ export function runGameTick(
   } else {
     newState.paddle.width = 60;
   }
-  
+
   return newState;
 }

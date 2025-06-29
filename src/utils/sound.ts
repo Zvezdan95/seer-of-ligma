@@ -1,0 +1,132 @@
+class SoundManager {
+    private muted: boolean;
+    private audioBackground = new Audio();
+    private audioAction = new Audio();
+    private ballHitsPaddle: SoundConfig = {
+        url: "https://ivaiacgqwatkujvyrntd.supabase.co/storage/v1/object/public/the-seer-of-ligma//ball-hits-paddle.mp3",
+        volume: 1.0,
+        loop: false
+    }
+    private ballPressed: SoundConfig = {
+        url: "https://ivaiacgqwatkujvyrntd.supabase.co/storage/v1/object/public/the-seer-of-ligma//ball-pressed.mp3",
+        volume: 1.0,
+        loop: false
+    }
+    private enemyHit: SoundConfig = {
+        url: "https://ivaiacgqwatkujvyrntd.supabase.co/storage/v1/object/public/the-seer-of-ligma//enemy-hit.mp3",
+        volume: 1.0,
+        loop: false
+    }
+    private gameOver: SoundConfig = {
+        url: "https://ivaiacgqwatkujvyrntd.supabase.co/storage/v1/object/public/the-seer-of-ligma//game-over.mp3",
+        volume: 1.0,
+        loop: false
+    }
+    private gameplaySoundtrack: SoundConfig = {
+        url: "https://ivaiacgqwatkujvyrntd.supabase.co/storage/v1/object/public/the-seer-of-ligma//gameplay-soundtrack.mp3",
+        volume: 0.5,
+        loop: true
+    }
+    private introScreen: SoundConfig = {
+        url: "https://ivaiacgqwatkujvyrntd.supabase.co/storage/v1/object/public/the-seer-of-ligma//intro-screen.mp3",
+        volume: 1.0,
+        loop: true
+    }
+    private ligmaBalls: SoundConfig = {
+        url: "https://ivaiacgqwatkujvyrntd.supabase.co/storage/v1/object/public/the-seer-of-ligma//ligma-balls.mp3",
+        volume: 1.0,
+        loop: false
+    }
+    private audioBallHitsPaddle = fromSoundConfigToAudio(this.ballHitsPaddle);
+    private audioEnemyHit = fromSoundConfigToAudio(this.enemyHit);
+
+
+    constructor() {
+        this.playIntroScreen();
+    }
+
+    private setBackground(soundCfg: SoundConfig): void {
+        setSoundConfigToAudio(this.audioBackground, soundCfg);
+    }
+
+    private setAction(soundCfg: SoundConfig): void {
+        setSoundConfigToAudio(this.audioAction, soundCfg);
+    }
+
+    public playBallHitsPaddle(): void {
+        this.audioBallHitsPaddle.play();
+    }
+
+    public playBallPressed(): void {
+        this.setBackground(this.ballPressed);
+    }
+
+    public playEnemyHit(): void {
+        this.audioEnemyHit.play();
+    }
+
+    public playGameOver(): void {
+        this.setAction(this.gameOver);
+    }
+
+    public playGameplaySoundtrack(): void {
+        this.setBackground(this.gameplaySoundtrack);
+    }
+
+    public playIntroScreen(): void {
+        this.setBackground(this.introScreen);
+    }
+
+    public playLigmaBalls(): void {
+        this.setAction(this.ligmaBalls);
+    }
+
+    public mute(): void {
+        this.muted = true;
+        this.setMute(true);
+    }
+
+    public unmute(): void {
+        this.muted = false;
+        this.setMute(false);
+    }
+
+    private setMute(muted: boolean): void {
+        this.audioAction.muted = muted;
+        this.audioBackground.muted = muted;
+    }
+
+    public muteToggle(): void {
+        this.muted ? this.unmute() : this.mute();
+    }
+
+    public isMuted(): boolean {
+        return this.muted;
+    }
+}
+
+type SoundConfig = {
+    url: string;
+    volume: number;
+    loop: boolean;
+}
+
+function fromSoundConfigToAudio(soundCfg: SoundConfig):HTMLAudioElement{
+    const audio = new Audio();
+    audio.volume = soundCfg.volume
+    audio.loop = soundCfg.loop
+    audio.src = soundCfg.url
+    audio.load();
+    return audio;
+}
+
+function setSoundConfigToAudio(audio: HTMLAudioElement, soundCfg: SoundConfig): void {
+    audio.volume = soundCfg.volume
+    audio.loop = soundCfg.loop
+    audio.src = soundCfg.url
+    audio.load();
+    audio.play();
+}
+
+const soundManager = new SoundManager();
+export default soundManager;

@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSound } from '../hooks/useSound';
 import { Ball, Enemy, Paddle, GameState } from '../types/game';
 import { runGameTick } from '../utils/gameLoop';
-import { 
-  getDifficultySettings, 
-  scaleBallVelocity, 
-  getEnemySpeed, 
+import {
+  getDifficultySettings,
+  scaleBallVelocity,
+  getEnemySpeed,
   shouldDoubleSpawn,
   BASE_BALL_SPEED,
   BASE_ENEMY_SPEED
@@ -47,13 +46,12 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver }) => {
   const [gameScale, setGameScale] = useState(1);
   const [gameOffset, setGameOffset] = useState({ x: 0, y: 0 });
 
-  const { playBounce, playExplosion } = useSound();
 
   // Responsive game dimensions
   const BASE_GAME_WIDTH = 800;
   const BASE_GAME_HEIGHT = 600;
   const BALL_RADIUS = 12;
-  
+
   // Set-up words and their punchlines
   const ENEMY_PUNCHLINES: Record<string, string> = {
     'Bofa': 'Bofa deez nuts!',
@@ -75,13 +73,15 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver }) => {
 
       const container = gameContainerRef;
       const containerRect = container.getBoundingClientRect();
-      const availableWidth = window.innerWidth - 32; // Account for padding
-      const availableHeight = window.innerHeight - 200; // Account for UI elements
+
+      // FIXED: Use more screen space
+      const availableWidth = window.innerWidth - 32; // Account for minimal padding
+      const availableHeight = window.innerHeight - 120; // Reduced from 200 to give more space
 
       // Calculate scale to fit both width and height
       const scaleX = availableWidth / BASE_GAME_WIDTH;
       const scaleY = availableHeight / BASE_GAME_HEIGHT;
-      const scale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 1
+      const scale = Math.min(scaleX, scaleY, 1.2); // Allow slight upscaling on large screens
 
       setGameScale(scale);
 
@@ -159,8 +159,6 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver }) => {
       setGameState(prev => {
         const newState = runGameTick(
           prev,
-          playBounce,
-          playExplosion,
           setExplodingPunchlines,
           ENEMY_PUNCHLINES
         );
@@ -176,12 +174,12 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver }) => {
     }, 16); // ~60fps
 
     return () => clearInterval(gameLoop);
-  }, [onGameOver, playBounce, playExplosion, gameState.gameStartTime]);
+  }, [onGameOver, gameState.gameStartTime]);
 
   // Clean up exploding punchlines
   useEffect(() => {
     const cleanup = setInterval(() => {
-      setExplodingPunchlines(prev => 
+      setExplodingPunchlines(prev =>
         prev.filter(p => Date.now() - parseInt(p.id.split('-')[1]) < 800)
       );
     }, 100);
@@ -194,8 +192,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver }) => {
     const spawnEnemy = () => {
       const difficulty = getDifficultySettings(gameState.gameStartTime);
       const enemiesCount = shouldDoubleSpawn(difficulty.phase.doubleSpawnChance) ? 2 : 1;
-      
-      const newEnemies = [];
+
+      const newEnemies: Enemy[] = [];
       for (let i = 0; i < enemiesCount; i++) {
         newEnemies.push({
           id: `${Date.now()}-${i}`,
@@ -214,36 +212,48 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver }) => {
 
     const difficulty = getDifficultySettings(gameState.gameStartTime);
     const enemySpawner = setInterval(spawnEnemy, difficulty.phase.spawnInterval);
-    
+
     return () => clearInterval(enemySpawner);
   }, [gameState.gameStartTime, gameState.currentPhase.spawnInterval]);
 
-  // Mouse/touch controls with responsive scaling
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  // ENHANCED: More sensitive global mouse controls for PC
+  const handleGlobalMouseMove = useCallback((e: MouseEvent) => {
     if (!gameContainerRef) return;
-    
-    const rect = gameContainerRef.getBoundingClientRect();
-    const clientX = e.clientX - rect.left - gameOffset.x;
-    const x = clientX / gameScale;
-    
+
+    // ENHANCED SENSITIVITY: Apply a sensitivity multiplier to make paddle more responsive
+    const SENSITIVITY_MULTIPLIER = 1.5; // Increase this to make paddle more sensitive
+
+    // Calculate paddle position based on mouse X relative to entire window
+    const windowWidth = window.innerWidth;
+    const mouseXPercent = e.clientX / windowWidth; // 0 to 1
+
+    // Apply sensitivity enhancement - make small mouse movements create larger paddle movements
+    const centerOffset = mouseXPercent - 0.5; // -0.5 to 0.5
+    const enhancedOffset = centerOffset * SENSITIVITY_MULTIPLIER; // Apply sensitivity
+    const enhancedMouseXPercent = Math.max(0, Math.min(1, 0.5 + enhancedOffset)); // Clamp to 0-1
+
+    // Map to game coordinates
+    const paddleX = enhancedMouseXPercent * BASE_GAME_WIDTH;
+
     setGameState(prev => ({
       ...prev,
       paddle: {
         ...prev.paddle,
-        x: Math.max(0, Math.min(BASE_GAME_WIDTH - prev.paddle.width, x - prev.paddle.width / 2)),
+        x: Math.max(0, Math.min(BASE_GAME_WIDTH - prev.paddle.width, paddleX - prev.paddle.width / 2)),
       },
     }));
-  }, [gameScale, gameOffset.x, gameContainerRef]);
+  }, [gameContainerRef]);
 
+  // FIXED: Touch controls for mobile - only within game area
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!gameContainerRef) return;
-    
+
     e.preventDefault(); // Prevent scrolling
     const rect = gameContainerRef.getBoundingClientRect();
     const touch = e.touches[0];
     const clientX = touch.clientX - rect.left - gameOffset.x;
     const x = clientX / gameScale;
-    
+
     setGameState(prev => ({
       ...prev,
       paddle: {
@@ -252,6 +262,17 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver }) => {
       },
     }));
   }, [gameScale, gameOffset.x, gameContainerRef]);
+
+  // FIXED: Add global mouse listener for PC
+  useEffect(() => {
+    // Only add global mouse listener on non-touch devices
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    if (!isTouchDevice) {
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      return () => document.removeEventListener('mousemove', handleGlobalMouseMove);
+    }
+  }, [handleGlobalMouseMove]);
 
   // Calculate elapsed time for display
   const elapsedSeconds = Math.floor((Date.now() - gameState.gameStartTime) / 1000);
@@ -259,73 +280,67 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver }) => {
   const seconds = elapsedSeconds % 60;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-900 to-purple-900 flex flex-col items-center justify-center p-4 overflow-hidden">
-      {/* Responsive UI Header */}
-      <div className="w-full max-w-4xl mb-4">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-900 to-purple-900 flex flex-col overflow-hidden">
+      {/* FIXED: Compact UI Header */}
+      <div className="w-full px-4 py-2 flex-shrink-0">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-2 text-center sm:text-left">
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-white">Score: {gameState.score}</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-white">Score: {gameState.score}</h2>
               <div className="text-purple-300 text-xs sm:text-sm">
                 Time: {minutes}:{seconds.toString().padStart(2, '0')}
               </div>
             </div>
-            
+
             <div className="text-center">
-              <div className="text-yellow-400 font-bold text-sm sm:text-lg">{gameState.currentPhase.name}</div>
+              <div className="text-yellow-400 font-bold text-sm sm:text-base">{gameState.currentPhase.name}</div>
               <div className="text-purple-300 text-xs">
-                Speed: {gameState.currentPhase.ballSpeedMultiplier.toFixed(1)}x | 
+                Speed: {gameState.currentPhase.ballSpeedMultiplier.toFixed(1)}x |
                 Spawn: {(gameState.currentPhase.spawnInterval / 1000).toFixed(1)}s
               </div>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <span className="text-purple-300 text-sm">Balls:</span>
             {[...Array(gameState.lives)].map((_, i) => (
-              <div key={i} className="w-3 h-3 sm:w-4 sm:h-4 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full shadow-lg" 
-                   style={{ boxShadow: '0 0 10px rgba(59, 130, 246, 0.6)' }} />
+              <div key={i} className="w-3 h-3 sm:w-4 sm:h-4 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full shadow-lg"
+                style={{ boxShadow: '0 0 10px rgba(59, 130, 246, 0.6)' }} />
             ))}
           </div>
         </div>
       </div>
 
-      {/* Responsive Game Container */}
-      <div 
+      {/* FIXED: Expanded Game Container */}
+      <div
         ref={setGameContainerRef}
-        className="relative touch-none select-none"
+        className="flex-1 relative touch-none select-none flex items-center justify-center px-4"
         style={{
-          width: '100%',
-          height: 'auto',
-          maxWidth: '100vw',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center'
+          minHeight: 0, // Allow flex shrinking
         }}
       >
-        {/* Scaled Game Area */}
+        {/* FIXED: Full-size Game Area */}
         <div
           className="relative bg-black border-2 sm:border-4 border-purple-400 overflow-hidden cursor-none"
-          style={{ 
+          style={{
             width: BASE_GAME_WIDTH * gameScale,
             height: BASE_GAME_HEIGHT * gameScale,
-            transform: `translate(${gameOffset.x}px, ${gameOffset.y}px)`,
-            transformOrigin: 'top left'
+            maxWidth: '100%',
+            maxHeight: '100%',
           }}
-          onMouseMove={handleMouseMove}
           onTouchMove={handleTouchMove}
           onTouchStart={(e) => e.preventDefault()}
         >
           {/* Background Grid */}
           <div className="absolute inset-0 opacity-10">
             {[...Array(20)].map((_, i) => (
-              <div key={i} className="absolute border-purple-300" 
-                   style={{ 
-                     left: `${i * 5}%`, 
-                     top: 0, 
-                     width: '1px', 
-                     height: '100%' 
-                   }} />
+              <div key={i} className="absolute border-purple-300"
+                style={{
+                  left: `${i * 5}%`,
+                  top: 0,
+                  width: '1px',
+                  height: '100%'
+                }} />
             ))}
           </div>
 
@@ -392,8 +407,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver }) => {
                   textOverflow: 'ellipsis'
                 }}
                 initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ 
-                  opacity: [0, 1, 1, 0], 
+                animate={{
+                  opacity: [0, 1, 1, 0],
                   scale: [0.5, 1.2, 1.2, 0],
                   y: [0, -20, -20, -40]
                 }}
@@ -414,8 +429,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver }) => {
               width: 120 * gameScale,
               height: gameState.paddle.height * gameScale,
               transformOrigin: 'center',
-              boxShadow: gameState.paddle.width < 120 ? 
-                `0 0 ${15 * gameScale}px rgba(239, 68, 68, 0.8)` : 
+              boxShadow: gameState.paddle.width < 120 ?
+                `0 0 ${15 * gameScale}px rgba(239, 68, 68, 0.8)` :
                 `0 0 ${15 * gameScale}px rgba(251, 191, 36, 0.8)`
             }}
             animate={{
@@ -460,10 +475,10 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver }) => {
         </div>
       </div>
 
-      {/* Mobile-friendly Instructions */}
-      <div className="mt-4 text-center text-purple-300 text-xs sm:text-sm max-w-md">
+      {/* FIXED: Compact Mobile-friendly Instructions */}
+      <div className="px-4 py-2 text-center text-purple-300 text-xs sm:text-sm flex-shrink-0">
         <div className="sm:hidden">Touch and drag to move the paddle</div>
-        <div className="hidden sm:block">Use mouse or touch to move the paddle</div>
+        <div className="hidden sm:block">Move mouse anywhere to control the paddle</div>
         <div>Keep the balls in play • Hit the setup words to reveal punchlines!</div>
       </div>
     </div>
