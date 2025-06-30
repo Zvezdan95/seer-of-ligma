@@ -1,6 +1,8 @@
+enum Background { IntoMusic, HoldBallNoise, GameplayeMusic }
 class SoundManager {
-    private muted: boolean;
+    private muted: boolean = false;
     private audioBackground = new Audio();
+    private backgroundMusic: Background | null = null;
     private audioAction = new Audio();
     private ballHitsPaddle: SoundConfig = {
         url: "https://ivaiacgqwatkujvyrntd.supabase.co/storage/v1/object/public/the-seer-of-ligma//ball-hits-paddle.mp3",
@@ -39,6 +41,7 @@ class SoundManager {
     }
 
     constructor() {
+        this.backgroundMusic = null;
         this.playIntroScreen();
     }
 
@@ -55,7 +58,10 @@ class SoundManager {
     }
 
     public playBallPressed(): void {
-        this.setBackground(this.ballPressed);
+        if (this.backgroundMusic !== Background.HoldBallNoise) {
+            this.setBackground(this.ballPressed);
+            this.backgroundMusic = Background.HoldBallNoise;
+        }
     }
 
     public playEnemyHit(): void {
@@ -67,11 +73,18 @@ class SoundManager {
     }
 
     public playGameplaySoundtrack(): void {
-        this.setBackground(this.gameplaySoundtrack);
+        if (this.backgroundMusic !== Background.GameplayeMusic) {
+            this.setBackground(this.gameplaySoundtrack);
+            this.backgroundMusic = Background.GameplayeMusic;
+        }
     }
 
     public playIntroScreen(): void {
+        // if (this.backgroundMusic !== Background.IntoMusic) {
+        // }
+        this.backgroundMusic = Background.IntoMusic
         this.setBackground(this.introScreen);
+
     }
 
     public playLigmaBalls(): void {
