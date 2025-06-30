@@ -1,11 +1,12 @@
-import React, {useState} from 'react';
-import {AnimatePresence} from 'framer-motion';
+import React, { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import AudioMuteToggle from './components/AudioMuteToggle';
 import IntroScreen from './components/IntroScreen';
 import GameScreen from './components/GameScreen';
 import GameOverScreen from './components/GameOverScreen';
 import soundManager from "./utils/sound.ts";
 import AudioConsentDialog from './components/AudioConsentDialog';
+import BoltBadge from './components/BoltBadge.tsx';
 
 type Screen = 'intro' | 'game' | 'gameover';
 
@@ -38,7 +39,7 @@ function App() {
 
     return (
         <div className="w-full h-full relative">
-            <AudioMuteToggle/>
+            <AudioMuteToggle />
             <AnimatePresence>
                 {showAudioConsent && (
                     <AudioConsentDialog onContinue={handleAudioConsent} />
@@ -46,10 +47,10 @@ function App() {
             </AnimatePresence>
             <AnimatePresence mode="wait">
                 {currentScreen === 'intro' && (
-                    <IntroScreen key="intro" onComplete={handleIntroComplete}/>
+                    <IntroScreen key="intro" onComplete={handleIntroComplete} />
                 )}
                 {currentScreen === 'game' && (
-                    <GameScreen key="game" onGameOver={handleGameOver}/>
+                    <GameScreen key="game" onGameOver={handleGameOver} />
                 )}
                 {currentScreen === 'gameover' && (
                     <GameOverScreen
@@ -58,6 +59,9 @@ function App() {
                         onRestart={handleRestart}
                     />
                 )}
+            </AnimatePresence>
+            <AnimatePresence>
+                <BoltBadge />
             </AnimatePresence>
         </div>
     );
