@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 /* For Webkit-based browsers (Chrome, Safari, newer versions of Edge) */
 *::-webkit-scrollbar {
     display: none;
@@ -8,10 +9,57 @@
 
 /* For Firefox and other browsers that support scrollbar-width */
 * {
-    scrollbar-width: none; /* "auto" or "thin" */
+    scrollbar-width: none;
+    /* "auto" or "thin" */
 }
 
 /* For Internet Explorer and older versions of Edge */
 * {
     -ms-overflow-style: none;
+}
+
+.bolt-badge {
+    transition: all 0.3s ease;
+}
+
+@keyframes badgeIntro {
+    0% {
+        transform: scale(0.1);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.bolt-badge-intro {
+    animation: badgeIntro 0.7s ease-out 1s both;
+}
+
+.bolt-badge-intro.animated {
+    animation: none;
+}
+
+@keyframes badgeHover {
+    0% {
+        transform: scale(1) rotate(0deg);
+    }
+
+    50% {
+        transform: scale(1.1) rotate(22deg);
+    }
+
+    100% {
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+.bolt-badge:hover {
+    animation: badgeHover 0.6s ease-in-out;
 }
